@@ -1,8 +1,22 @@
-from django.shortcuts import render
-from products.models import Product
+from django.shortcuts import HttpResponse, render
+from datetime import datetime
+from products.models import Product, Comment
 
 
-# Create your views here.
+def hello(request):
+    if request.method == 'GET':
+        return HttpResponse('hello, its my first project! Enjoy! :)')
+
+
+def now_date(request):
+    now_time = datetime.now()
+    if request.method == 'GET':
+        return HttpResponse(now_time)
+
+
+def goodbye(request):
+    if request.method == 'GET':
+        return HttpResponse('Goodbye user!')
 
 
 def main_view(request):
@@ -17,3 +31,14 @@ def products_view(request):
             'products': products
         }
         return render(request, 'products/products.html', context=context)
+
+
+def products_detail_view(request, id):
+    if request.method == 'GET':
+        product = Product.objects.get(id=id)
+        comments = Comment.objects.filter(products_id=id)
+        context = {
+            'product': product,
+            'comments': product.comment_set.all(),
+        }
+        return render(request, 'products/detail.html', context=context)
