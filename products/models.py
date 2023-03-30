@@ -3,15 +3,23 @@ from django.db import models
 
 # Create your models here.
 
-class Product(models.Model):
+
+class Products(models.Model):
     image = models.ImageField(blank=True, null=True)
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=255)
     description = models.TextField()
-    rate = models.FloatField(0.0)
+    price = models.IntegerField(default=0)
+    rate = models.FloatField(default=0.0)
     created_date = models.DateField(auto_now_add=True)
-    modified = models.DateField(auto_now=True)
+    modified_date = models.DateField(auto_now=True)
+
+    def __str__(self):
+        return self.title
 
 
 class Comment(models.Model):
     text = models.CharField(max_length=255)
-    products = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f'{self.text}-> {self.product.title}'

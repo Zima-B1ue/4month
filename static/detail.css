@@ -4,6 +4,16 @@
     padding: 10px;
 }
 
+.product > img {
+
+    display: block;
+
+    width: 30%;
+
+    margin-left: 33%;
+
+}
+
 .dates {
     display: flex;
     justify-content: space-between;
