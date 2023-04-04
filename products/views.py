@@ -56,10 +56,10 @@ def create_product_view(request):
                 image=form.cleaned_data.get('image')
             )
             return redirect("/products/")
-        return render(request, 'products/create.html', context={'form': form and data})
+        return render(request, 'products/create.html', context={'form': form}, content_type=data)
 
 
-def products_detail_view(request, id):
+def product_detail_view(request, id):
     if request.method == 'GET':
         product = Products.objects.get(id=id)
 
