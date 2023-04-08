@@ -6,107 +6,96 @@ import products
 from onlinestore.form import ProductCreateForm, CommentsCreateForm
 from products.models import Products, Comment
 from products.constans import PAGINATION_LIMIT
+from django.views.generic import ListView, CreateView, DetailView, DeleteView
+
 
 # Create your views here.
-def main_page_view(request):
-    if request.method == 'GET':
-        return render(request, 'layouts/index.html')
+class MainPageCBV(ListView):
+    model = Products
 
 
-def products_view(request):
-    if request.method == 'GET':
+class ProductCBV(ListView):
+    model = Products
+    template_name = 'products/products.html'
+    context_object_name = 'products'
+
+    def get(self, request, **kwargs):
         search = request.GET.get('search')
-        products = Products.objects.all()
+        products = self.get_queryset().order_by('-created_date', '-rate')
         page = int(request.GET.get('page', 1))
-
-
 
         if search:
             products = \
                 products.filter(title__icontains=search) | products.filter(description__icontains=search)
         max_page = products.__len__() / PAGINATION_LIMIT
-        #max_page = round(max_page) + 1 if round(max_page) < max_page else round(max_page)
+        # max_page = round(max_page) + 1 if round(max_page) < max_page else round(max_page)
 
         if round(max_page) < max_page:
             max_page = round(max_page) + 1
         else:
             max_page = round(max_page)
 
-        products = products[PAGINATION_LIMIT *(page-1):PAGINATION_LIMIT * page]
-
+        products = products[PAGINATION_LIMIT * (page - 1):PAGINATION_LIMIT * page]
 
         context = {
             'products': products,
             "user": request.user,
-            'pages': range(1, max_page+1)
+            'pages': range(1, max_page + 1)
         }
-        return render(request, 'products/products.html', context=context)
+        return render(request, self.template_name, context=context)
 
 
-def product_detail_view(request, id):
-    if request.method == 'GET':
-        product = Products.objects.get(id=id)
+class ProductDetailCBV(DetailView, CreateView):
+    model = Products
+    template_name = 'products/detail.html'
+    form_class = CommentsCreateForm
+    pk_url_kwarg = 'id'
 
-        context = {
-            "product": product,
-            "comments": product.comment_set.all()
-        }
-
-        return render(request, 'products/detail.html', context=context)
-
-
-def create_product_view(request):
-    if request.method == 'GET':
-        context = {
-            'form': ProductCreateForm,
+    def get_context_data(self, *, object_list=None, **kwargs):
+        return {
+            'product': self.get_object(),
+            'Reviews': Comment.objects.filter(product=self.get_object()),
+            'form': kwargs.get('form', self.form_class)
         }
 
-        return render(request, 'products/create.html', context=context)
-
-    if request.method == 'POST':
-        data, files = request.POST, request.FILES
-        form = ProductCreateForm(request.POST, request.FILES)
-
-        if form.is_valid():
-            Products.objects.create(
-                title=form.cleaned_data.get('title'),
-                rate=form.cleaned_data.get('rate'),
-                description=form.cleaned_data.get('description'),
-                price=form.cleaned_data.get('price'),
-                image=form.cleaned_data.get('image')
-            )
-            return redirect("/products/")
-        return render(request, 'products/create.html', context={'form': form}, content_type=data)
-
-
-def product_detail_view(request, id):
-    if request.method == 'GET':
-        product = Products.objects.get(id=id)
-
-        context = {
-            'product': product,
-            'comments': product.comment_set.all(),
-            'form': CommentsCreateForm
-        }
-
-        return render(request, 'products/detail.html', context=context)
-
-    if request.method == 'POST':
-        product = Products.objects.get(id=id)
-        data = request.POST
-        form = CommentsCreateForm(data=data)
+    def post(self, request, **kwargs):
+        form = CommentsCreateForm(data=request.POST)
 
         if form.is_valid():
             Comment.objects.create(
                 text=form.cleaned_data.get('text'),
-                product=product
-
+                rate=form.cleaned_data.get('rate'),
+                product_id=self.get_object().id,
             )
+            return redirect(f'/products/{self.get_object().id}/')
 
-        context = {
-            'product': product,
-            'comments': product.comment_set.all(),
-            'form': form
+        return render(request, self.template_name, context=self.get_context_data(
+            form=form
+        ))
+
+
+class CreateProductCBV(CreateView, ListView):
+    model = Products
+    template_name = 'products/create.html'
+    form_class = ProductCreateForm
+
+    def get_context_data(self, **kwargs):
+        return {
+            'form': kwargs['form'] if kwargs.get('form') else self.form_class
         }
 
-        return render(request, 'products/detail.html', context=context)
+    def get(self, request, **kwargs):
+        return render(request, self.template_name, context=self.get_context_data())
+
+    def post(self, request, *args, **kwargs):
+        form = self.form_class(request.POST, request.FILES)
+
+        if form.is_valid():
+            self.model.objects.create(
+                title=form.cleaned_data.get('title'),
+                quantity=form.cleaned_data.get('quantity'),
+                image=form.cleaned_data.get('image'),
+                description=form.cleaned_data.get('description')
+            )
+            return redirect('/products/')
+        return render(request, self.template_name, context={self.get_context_data(form=form)})
